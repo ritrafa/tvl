@@ -86,15 +86,19 @@ Example Response:
 
     [
     {
-        "daoGovernanceProgramId": "all",
-        "totalValue": "123456789.01"
-    }
+        "daoGovernanceProgramId":"all",
+        "totalValue":"1140458150.22"
+    },
     {
-        "daoGovernanceProgramId": "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw",
-        "totalValue": "12345.67"
+        "daoGovernanceProgramId":"GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw",
+        "totalValue":"333630491.88"
     },
     ...
     ]
+
+## Caching
+
+This implementation is using the db caching explained above as well as caching prices during any active load of a realm treasury address so as to reduce the calls to JUP's api.
 
 ## Warnings
 
