@@ -4,6 +4,8 @@ import { getAllGovernances, getNativeTreasuryAddress, getRealms } from '@solana/
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
+export const maxDuration = 60;
+
 const SOLANA_MAINNET = process.env.RPC_URL;
 const JUPITER_API_URL = 'https://price.jup.ag/v4/price';
 const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
@@ -69,11 +71,25 @@ export async function GET(request, { params }) {
   const { daoGovernanceProgramId } = params;
 
   try {
+    let totalValue = 0;
+
+    // Check the postgres table 'tvl' to see if there is an daoGovernanceProgramId entry that is less than 14 days old
+    const { rows: existingRows } = await pgClient.query(
+      `SELECT value FROM tvl WHERE realm = $1 AND timestamp > NOW() - INTERVAL '14 days' ORDER BY timestamp DESC LIMIT 1`,
+      [daoGovernanceProgramId]
+    );
+
+    if (existingRows.length > 0) {
+      console.log(`Using cached TVL for daoGovernanceProgramId: ${daoGovernanceProgramId}`);
+      totalValue = parseFloat(existingRows[0].value).toFixed(2);
+      return NextResponse.json({ daoGovernanceProgramId, totalValue });
+    }
+
+
     // Fetch all realms associated with the DAO governance program id
     const realms = await getRealms(connection, new PublicKey(daoGovernanceProgramId));
     console.log('daoGovernanceProgramId: ', daoGovernanceProgramId, 'size: ', realms.length);
 
-    let totalValue = 0;
 
     // Process realms in batches of 25
     const batchSize = 25;
@@ -129,6 +145,12 @@ export async function GET(request, { params }) {
       // Sum up the results from the batch
       totalValue += batchResults.reduce((sum, value) => sum + value, 0);
     }
+
+    // Add line to postgres 'tvl' table with daoGovernanceProgramId, total value, and timestamp
+    await pgClient.query(
+      `INSERT INTO tvl (realm, value, timestamp) VALUES ($1, $2, NOW())`,
+      [daoGovernanceProgramId, totalValue]
+    );
 
     totalValue = totalValue.toFixed(2);
 
