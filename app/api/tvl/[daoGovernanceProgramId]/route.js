@@ -1,4 +1,4 @@
-// app/api/tvl/[daoId]/route.js
+// app/api/tvl/[daoGovernanceProgramId]/route.js
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAllGovernances, getNativeTreasuryAddress, getRealms } from '@solana/spl-governance';
 import { NextResponse } from 'next/server';
@@ -13,7 +13,7 @@ const connection = new Connection(SOLANA_MAINNET);
 
 // PostgreSQL client setup
 const pgClient = new Client({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.POSTGRES_URL,
 });
 
 pgClient.connect();
@@ -57,17 +57,19 @@ async function getTokenBalances(treasuryAddresses) {
 }
 
 export async function GET(request, { params }) {
-  const { daoId } = params;
+  const { daoGovernanceProgramId } = params;
 
   try {
     // Fetch all realms associated with the DAO
-    const realms = await getRealms(connection, new PublicKey(daoId));
-    console.log('daoId: ', daoId, 'size: ', realms.length)
+    const realms = await getRealms(connection, new PublicKey(daoGovernanceProgramId));
+    console.log('daoGovernanceProgramId: ', daoGovernanceProgramId, 'size: ', realms.length)
 
     let totalValue = 0;
+    let i = 0;
 
     for (const realm of Object.values(realms)) {
-      console.log('realm', realm.pubkey.toBase58());
+      console.log(i, 'realm', realm.pubkey.toBase58());
+      i++
 
       // Check the postgres table 'tvl' to see if there is an entry that is less than 30 days old
       const { rows: existingRows } = await pgClient.query(
@@ -110,7 +112,9 @@ export async function GET(request, { params }) {
       totalValue += realmValue;
     }
 
-    return NextResponse.json({ daoId, totalValue });
+    totalValue = totalValue.toFixed(2);
+
+    return NextResponse.json({ daoGovernanceProgramId, totalValue });
   } catch (error) {
     console.error('error', error);
     return NextResponse.json({ error: 'An error occurred while calculating TVL.' }, { status: 500 });

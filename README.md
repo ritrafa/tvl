@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# TVL
+
+This project provides an API to calculate and return the Total Value Locked (TVL) for various DAOs on the Solana blockchain. The API fetches SOL and SPL token balances held in the treasuries of all the DAOs governed by a set of governance program IDs and returns their USD value.
 
 ## Getting Started
 
-First, run the development server:
+### Dependencies
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+This project relies on several dependencies, including:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Node.js v14 or higher
+- PostgreSQL database
+- Next.js
+- Solana Web3.js
+- SPL Governance SDK
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Installation
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Clone the repository and install the required dependencies:
 
-## Learn More
+    git clone https://github.com/ritrafa/tvl.git
+    cd tvl
+    npm install
 
-To learn more about Next.js, take a look at the following resources:
+### Environment Variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+You need to create a .env file in the root of your project and define the following environment variables:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+    RPC_URL={rpc url}
+    NEXT_PUBLIC_BASE_URL=http://localhost:3000
+    POSTGRES_URL={postgres impl}
+    POSTGRES_PRISMA_URL={postgres impl}
+    POSTGRES_URL_NO_SSL={postgres impl}
+    POSTGRES_URL_NON_POOLING={postgres impl}
+    POSTGRES_USER={postgres impl}
+    POSTGRES_HOST={postgres impl}
+    POSTGRES_PASSWORD={postgres impl}
+    POSTGRES_DATABASE={postgres impl}
 
-## Deploy on Vercel
+### Database Setup
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project uses PostgreSQL to cache the TVL values. Create the necessary table by running the following SQL command in your PostgreSQL database:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+    CREATE TABLE tvl (
+        id SERIAL PRIMARY KEY,
+        realm VARCHAR(255) NOT NULL,
+        value NUMERIC NOT NULL,
+        timestamp TIMESTAMPTZ NOT NULL,
+        CONSTRAINT unique_realm_timestamp UNIQUE (realm, timestamp)
+    );
+
+### Running the API
+
+To start the API server:
+
+    npm run dev
+
+This will start the Next.js server on http://localhost:3000.
+
+## API Endpoints
+
+### GET /api/tvl/[daoGovernanceProgramId]
+
+Description: Fetches the TVL for a specific DAO identified by the daoGovernanceProgramId.
+
+Example Request:
+
+    GET /api/tvl/GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw
+
+Example Response:
+
+    {
+      "daoGovernanceProgramId": "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw",
+      "totalValue": "12345.67"
+    }
+
+### GET /api/tvl/all
+
+Description: Fetches the TVL for all DAOs defined in the DAO_GOVERNANCE_IDS array.
+
+Example Request:
+
+    GET /api/tvl/all
+
+Example Response:
+
+    [
+    {
+        "daoGovernanceProgramId": "all",
+        "totalValue": "123456789.01"
+    }
+    {
+        "daoGovernanceProgramId": "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw",
+        "totalValue": "12345.67"
+    },
+    ...
+    ]
+
+## Warnings
+
+Based on my free plan on vercel, the api will timeout after 60 seconds if it is not complete. Once all realms are cached this is not a problem, but it could take multiple runs to complete the large set (3000+) of realms in the standard governance program id.
